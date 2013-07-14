@@ -225,6 +225,34 @@
     }, onError);
   };
  
+  FileSystem.prototype.moveFile = function(cwd, src, dest, newName, cb) {
+    var cb = isCallback(cb),
+        newName = typeof newName !== "undefined" ? newName : null;
+
+    cwd.getFile(src, {}, function(file) {
+      cwd.getDirectory(dest, {}, function(dir) {
+        if (newName)
+          file.moveTo(dir, newName);
+        else
+          file.moveTo(dir);
+
+        cb && cb();
+      },onError); 
+    },onError);
+  };
+
+  FileSystem.prototype.copyFile = function(cwd, filename, dest, cb) {
+    var cb = isCallback(cb);
+
+    cwd.getFile(filename, {}, function(file) {
+      cwd.getDirectory(dest, {},  function(dir) {
+        file.copyTo(dir);
+
+        cb && cb();
+      }, onError);
+    },onError); 
+  };
+
   FileSystem.prototype.getResourceURL = function(file) {
     return this.file.toURL();
   };
@@ -293,7 +321,7 @@
  
    walk(root,cb); 
   };
- 
+  // needs work 
   FileSystem.prototype._listEntries = function(list) {
    var files = document.querySelector("#filelist"),
         level = 0;

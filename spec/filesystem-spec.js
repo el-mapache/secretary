@@ -55,14 +55,17 @@ describe("FileSystem Wrapper", function() {
       fs.should.have.property("writeFile"); 
       fs.should.have.property("readChunk"); 
       fs.should.have.property("readFile"); 
+      fs.should.have.property("moveFile"); 
+      fs.should.have.property("copyFile"); 
     }); 
 
     it("creates/gets the specified file", function(done) {
       fs.findOrCreateFile("test.tmp", function(file) {
         fs.file.should.not.equal(null);
         fs.file.name.should.equal("test.tmp");
-        fs.removeFile("test.tmp");
-        done();
+        fs.removeFile("test.tmp", function() {
+          done();
+        });
       });
     });
 
@@ -71,12 +74,12 @@ describe("FileSystem Wrapper", function() {
        fs.removeFile("test.tmp", function() {
          expect(fs.file).to.equal(null);
          fs.readDir(fs.fs, function(results) {
-          results.length.should.equal(0);
-          done();
+           results.length.should.equal(0);
+           done();
          });
        });
      }); 
-    });
+   });
    
     it("reads the specified file into memory", function(done) {
       fs.findOrCreateFile("test.tmp", function(file) {
@@ -92,7 +95,51 @@ describe("FileSystem Wrapper", function() {
     }); 
 
     it("reads a chunk of a file into memory", function(done) {
-      
+      fs.findOrCreateFile("test.tmp", function(file) {
+        fs.writeFile(new Blob(["hi"],{type: "text/plain"}), 'w', function() {
+          fs.getFile("test.tmp", function(file) {
+            fs.readChunk(0,2, function(buffer) {
+              buffer.byteLength.should.equal(2);
+              fs.removeFile("test.tmp", function() {
+                done();
+              });
+            });
+          });
+        });
+      });
     });
+
+    it("copies a file", function(done) {
+      fs.findOrCreateFile("test.tmp", function(file) {
+        fs.mkDir(fs.fs, "new", function() {
+          fs.copyFile(fs.fs,"test.tmp","new", function() {
+            fs.getFile("new/test.tmp",function(file) {
+              file.should.not.equal(null);
+              done();
+            });
+          });
+        });
+      });
+    });
+
+    it("moves/renames a file", function(done) {
+      fs.findOrCreateFile("test.tmp", function(file) {
+        fs.mkDir(fs.fs, "new", function() {
+          fs.moveFile(fs.fs,"test.tmp","new", "new.tmp", function() {
+            fs.getFile("new/new.tmp",function(file) {
+              file.should.not.equal(null);
+              fs.fs.getFile("test.tmp",{},function() {},function(e) {
+                e.code.should.equal(1);
+                done();
+              });
+            });
+          });
+        });
+      });
+    });
+  });
+
+  describe("DirectoryEntry methods", function() {
+  
   });
 });
