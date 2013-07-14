@@ -4,9 +4,13 @@ var should = chai.should(),
 describe("FileSystem Wrapper", function() {
   var fs = null;
 
+  // Little wrapper so I dont have to copy paste this block
   function beforeEach() {
     before(function(done) {
+      // Initializes asynchronously, need to call done before
+      // the suite can execute.
       fs = new FileSystem({
+        debug: true,
         callback: function() {
           done();
         }
@@ -16,11 +20,12 @@ describe("FileSystem Wrapper", function() {
 
   describe("Instatiation", function() {
     beforeEach();
+
     it("is be an instance of FileSystem", function() {
       (fs instanceof FileSystem).should.equal(true);
     });
 
-    it("has some properties", function() {
+    it("has properties: 'fs', 'file', 'type', 'bytes', 'debug'", function() {
       fs.should.have.property("fs");
       fs.should.have.property("file");
       fs.should.have.property("bytes");
@@ -34,9 +39,60 @@ describe("FileSystem Wrapper", function() {
     });
 
     it("allocates storage size equal to bytes * megabyte", function() {
-     fs.availableStorage(function(storageObj) {
-       storageObj.allocated.should.equal(fs.bytes /(1024 * 1024));
-     });
+      fs.availableStorage(function(storageObj) {
+        storageObj.allocated.should.equal(fs.bytes /(1024 * 1024));
+      });
+    });
+  });
+
+  describe("File methods", function() {
+    beforeEach();
+
+    it("responds to: 'getFile', 'findOrCreateFile', 'removeFile', 'writeFile', 'readFile', 'readChunk'", function() {
+      fs.should.have.property("getFile"); 
+      fs.should.have.property("findOrCreateFile"); 
+      fs.should.have.property("removeFile"); 
+      fs.should.have.property("writeFile"); 
+      fs.should.have.property("readChunk"); 
+      fs.should.have.property("readFile"); 
+    }); 
+
+    it("creates/gets the specified file", function(done) {
+      fs.findOrCreateFile("test.tmp", function(file) {
+        fs.file.should.not.equal(null);
+        fs.file.name.should.equal("test.tmp");
+        fs.removeFile("test.tmp");
+        done();
+      });
+    });
+
+    it("removes the specified file from the sandbox", function(done) {
+     fs.findOrCreateFile("test.tmp", function(file) {
+       fs.removeFile("test.tmp", function() {
+         expect(fs.file).to.equal(null);
+         fs.readDir(fs.fs, function(results) {
+          results.length.should.equal(0);
+          done();
+         });
+       });
+     }); 
+    });
+   
+    it("reads the specified file into memory", function(done) {
+      fs.findOrCreateFile("test.tmp", function(file) {
+        fs.writeFile(new Blob(["hi"],{type: "text/plain"}), 'w', function() {
+          fs.readFile("test.tmp", function(text) {
+            text.should.equal("hi");
+            fs.removeFile("test.tmp", function() {
+              done();
+            });
+          });
+        });
+      });
+    }); 
+
+    it("reads a chunk of a file into memory", function(done) {
+      
     });
   });
 });
