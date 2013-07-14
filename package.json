@@ -1,0 +1,10 @@
+{
+  "name": "fs-api-test",
+  "version": "0.0.1",
+  "author": "el-mapache",
+  "description": "Test dependencies for FileSystem API wrapper",
+  "dependencies": {
+    "mocha": "*",
+    "chai": "*"
+  }
+}

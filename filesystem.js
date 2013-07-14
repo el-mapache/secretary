@@ -92,10 +92,16 @@
     }
   };
 
-  FileSystem.prototype.availableStorage = function() {
+  FileSystem.prototype.availableStorage = function(cb) {
+    cb = isCallback(cb);
     function currentAndTotalStorage(used, allocated) {
       console.log(used / MB + " MB used.");
       console.log(allocated / MB + " MB total space remaining.");
+
+      cb && cb({
+        allocated: allocated / MB,
+        used: used / MB
+      });
     }
 
     this.getStorageType().queryUsageAndQuota(currentAndTotalStorage);
