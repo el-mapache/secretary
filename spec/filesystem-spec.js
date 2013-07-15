@@ -47,7 +47,8 @@ describe("FileSystem Wrapper", function() {
 
   describe("File methods", function() {
     beforeEach();
-
+    
+    
     it("responds to: 'getFile', 'findOrCreateFile', 'removeFile', 'writeFile', 'readFile', 'readChunk'", function() {
       fs.should.have.property("getFile"); 
       fs.should.have.property("findOrCreateFile"); 
@@ -63,9 +64,7 @@ describe("FileSystem Wrapper", function() {
       fs.findOrCreateFile("test.tmp", function(file) {
         fs.file.should.not.equal(null);
         fs.file.name.should.equal("test.tmp");
-        fs.removeFile("test.tmp", function() {
-          done();
-        });
+        done();
       });
     });
 

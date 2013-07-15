@@ -3,7 +3,29 @@
   <head>
     <script src="filesystem.js"></script>
     <script>
-      var fs = new FileSystem({debug: true})
+      var fs = new FileSystem({
+        debug: true,
+        callback: run
+      });
+      function run() {
+        fs.mkDir(fs.fs.root, "/adam/man/folder", function() {
+          fs.changeDir(fs.fs.root, "/adam/man/folder", function() {
+            console.log(arguments);
+          });
+        });
+        //fs.findOrCreateFile("test.tmp", function(file) {
+        //  fs.mkDir(fs.fs.root, "new", function() {
+        //    fs.copyFile(fs.fs.root,"test.tmp","new", function() {
+        //      fs.fs.root.getDirectory("new", {}, function(dir) {
+
+        //        dir.getFile("test.tmp",{},function(file) {
+        //          console.log(file)
+        //        });
+        //      });
+        //    });
+        //  });
+        //});
+      }
     </script>
   </head>
   <body></body>

@@ -57,6 +57,7 @@
 
     this.debug = opts && opts.debug || false; 
     this.fs = null;
+    this.currentDirectory = null;
     this.file = null;
     this.bytes = ((opts && opts.storage) || 4000) * MB;
     this.type = window[opts && opts.type || 'PERSISTENT'];
@@ -82,7 +83,8 @@
   };
 
   FileSystem.prototype.onFsInit = function(args, fileSys) {
-    this.fs = fileSys.root;
+    this.fs = fileSys;
+    this.currentDirectory = fileSys.root;
     this.cb && this.cb();
 
     if (this.debug) {
@@ -110,7 +112,7 @@
     var cb = isCallback(cb),
         self = this;
  
-    this.fs.getFile(filename, {}, function(fileEntry) {
+    this.fs.root.getFile(filename, {}, function(fileEntry) {
       self.file = fileEntry;
       cb && cb(fileEntry);
     }, onError);
@@ -118,7 +120,7 @@
  
   FileSystem.prototype.findOrCreateFile = function(filename, cb) {
     var self = this,
-        fs = this.fs;
+        fs = this.fs.root;
  
     cb = isCallback(cb);
  
@@ -178,10 +180,10 @@
     });
   } 
   
-  FileSystem.prototype.readFile = function(file, cb) {
+  FileSystem.prototype.readFile = function(filename, cb) {
     var cb = isCallback(cb);
 
-    this.getFile(file, function(fileEntry) {
+    this.getFile(filename, function(fileEntry) {
       fileEntry.file(function(file) {
         var reader = new FileReader();
 
@@ -257,26 +259,47 @@
     return this.file.toURL();
   };
  
+  FileSystem.prototype.changeDir = function(cwd, path, cb) {
+    var dirs = path.split('/').splice(1),
+        cb = isCallback(cb),
+        self = this;
+
+    function locate(root, target) {
+      root.getDirectory(target, {}, function(dirEntry) {
+        if(dirs.length === 0) { 
+          self.currentDirectory = dirEntry;
+          return cb && cb(dirEntry);
+        }
+
+        locate(dirEntry,dirs.shift());
+        
+      },onError); 
+    }
+    
+    locate(cwd, dirs.shift());
+  };
+
   // Recursively makes nested directories after parent dir is created
-  // {@param rootDir} String initial parent directory
+  // {@param rootDir} Object initial parent directory
   // {@param folders} String names of folders separated by a '/' 
   // {@param cb} Function callback executed after all folders are created
   FileSystem.prototype.mkDir = function(rootDir, folders, cb) {
     var folders = folders.split('/'),
         cb = isCallback(cb);
- 
-    // Remove hidden folders and call again
+
     function createDir(root, folder) {
-      if((folders[0] === '.' || folders[0] === '') && folders.length !== 0) {
-        createDir(dirEntry, folders.splice(0,1));
+      folder = folder[0];
+
+      // Remove hidden folders and call again
+      if((folders[0] === '.' || folders[0] === '' || folder === "") && folders.length !== 0) {
+        createDir(root, folders.splice(0,1));
       }
- 
       root.getDirectory(folder, {create: true}, function(dirEntry) {
         if(folders.length === 0) return cb && cb();
         createDir(dirEntry, folders.splice(0,1));
       }, onError);
     }
- 
+
     createDir(rootDir, folders.splice(0,1));
   };
    
