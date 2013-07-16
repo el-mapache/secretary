@@ -95,9 +95,12 @@
 
   FileSystem.prototype.availableStorage = function(cb) {
     cb = isCallback(cb);
+
     function currentAndTotalStorage(used, allocated) {
-      console.log(used / MB + " MB used.");
-      console.log(allocated / MB + " MB total space remaining.");
+      if (this.debug) {
+        console.log(used / MB + " MB used.");
+        console.log(allocated / MB + " MB total space remaining.");
+      }
 
       cb && cb({
         allocated: allocated / MB,
@@ -108,26 +111,28 @@
     this.getStorageType().queryUsageAndQuota(currentAndTotalStorage);
   };
 
-  FileSystem.prototype.getFile = function(filename, cb) {
+  FileSystem.prototype.getFile = function(root, filename, cb) {
     var cb = isCallback(cb),
-        self = this;
+        self = this,
+        root = root || this.currentDirectory;
  
-    this.fs.root.getFile(filename, {}, function(fileEntry) {
+    root.getFile(filename, {}, function(fileEntry) {
       self.file = fileEntry;
       cb && cb(fileEntry);
     }, onError);
   };
  
-  FileSystem.prototype.findOrCreateFile = function(filename, cb) {
+  FileSystem.prototype.findOrCreateFile = function(root, filename, cb) {
     var self = this,
-        fs = this.fs.root;
+        fs = this.fs.root,
+        root = root || this.currentDirectory;
  
     cb = isCallback(cb);
  
     function onFileRetrieval(fileEntry) {
       if (self.debug) console.log('File created');
       self.file = fileEntry;
-      cb && cb(self.file);
+      cb && cb(fileEntry);
     }
  
     function onRetrievalError(err) {
@@ -258,7 +263,7 @@
   FileSystem.prototype.getResourceURL = function(file) {
     return this.file.toURL();
   };
- 
+   
   FileSystem.prototype.changeDir = function(cwd, path, cb) {
     var dirs = path.split('/').splice(1),
         cb = isCallback(cb),
@@ -278,6 +283,38 @@
     
     locate(cwd, dirs.shift());
   };
+  
+
+  function locate(root, path) {
+    var dirs = path.split('/').splice(1);
+
+    function find(root, target) {
+      root.getDirectory(target, {}, function(dirEntry) {
+        if(dirs.length === 0) return dirEntry;
+
+        find(dirEntry,dirs.shift());
+      },onError); 
+    }
+
+    find(root,dirs.shift());
+  }
+  
+  // Always searches the whole file system for a folder
+  FileSystem.prototype.removeDir = function(path, cb) {
+    var self = this,
+        dirToRemove = locate(this.fs.root, path),
+        name = dirToRemove.name;
+
+    cb = isCallback(cb);
+
+    dirToRemove.remove(function() {
+      if (self.currentDirectory.name === name) {
+        self.currentDirectory = self.fs.root;
+      }
+
+      cb && cb();
+    }, onError);
+  };
 
   // Recursively makes nested directories after parent dir is created
   // {@param rootDir} Object initial parent directory
@@ -285,8 +322,9 @@
   // {@param cb} Function callback executed after all folders are created
   FileSystem.prototype.mkDir = function(rootDir, folders, cb) {
     var folders = folders.split('/'),
-        cb = isCallback(cb);
-
+        cb = isCallback(cb),
+        rootDir = rootDir || this.currentDirectory;
+    
     function createDir(root, folder) {
       folder = folder[0];
 
@@ -295,7 +333,7 @@
         createDir(root, folders.splice(0,1));
       }
       root.getDirectory(folder, {create: true}, function(dirEntry) {
-        if(folders.length === 0) return cb && cb();
+        if(folders.length === 0) return cb && cb(dirEntry);
         createDir(dirEntry, folders.splice(0,1));
       }, onError);
     }
@@ -303,25 +341,27 @@
     createDir(rootDir, folders.splice(0,1));
   };
    
-  // Read the entire filesystem recursively in parallel.
-  // TODO explore do this in series and then sorting?
+  // Read the entire filesystem recursively in series.
+  // TODO explore do this in parallel and then sorting?
   FileSystem.prototype.readDir = function(root, cb) {
    function walk(root,done) {
      var results = [];
      var temp = [];
      var reader = root.createReader();
-     var name = root.fullPath;
-     
+     var name = root.fullPath === "/" ? "" : root.fullPath;
+
      function read() {
        reader.readEntries(function(list) {
          if (!list.length) {
            var i = 0;
- 
+           temp.sort(); 
            (function next() {
              var file = temp[i++];
+
              if (!file) return done(results);
+
              // Add file to the filesystem array
-             results.push(name + '/' + file.name);
+             results.push(file);//name + '/' + file.name);
              if(file.isDirectory) {
                walk(file, function(res) {
                  results = results.concat(toArray(res));
@@ -344,26 +384,29 @@
  
    walk(root,cb); 
   };
+
   // needs work 
   FileSystem.prototype._listEntries = function(list) {
-   var files = document.querySelector("#filelist"),
-        level = 0;
-   var self = this;
-   list.forEach(function(file) {
-     var li = document.createElement("li"),
-         type = !file.isFile ? "<span class='badge'>Folder </span>" : "<span class='badge'>File </span>";
+    var files = document.querySelector("#filelist"),
+        level = 0,
+        self = this;
+    
+    list.forEach(function(file) {
+      var li = document.createElement("li"),
+          type = !file.isFile ? "<span class='badge'>Folder </span>" : "<span class='badge'>File </span>";
  
-     li.innerHTML = [type, "<span>", file.name, "</span"].join("");
-     if(!file.isFile) {
-       li.style.marginLeft = (5 * level) + "px";
-       ++level;
+      li.innerHTML = [type, "<span>", file.name, "</span"].join("");
+      if(!file.isFile) {
+        li.style.marginLeft = (5 * level) + "px";
+        ++level;
  
-       var parentDir = self.fullPath.replace(root.name,"");
-       self.fileTree['/']
-       self.readDir(file);
-     }
-     li.onclick = function() {
-      self.findOrCreateFile("test.tmp");
+        var parentDir = self.fullPath.replace(root.name,"");
+        self.fileTree['/']
+        self.readDir(file);
+      }
+      
+      li.onclick = function() {
+        self.findOrCreateFile("test.tmp");
      };
      files.appendChild(li);
    }); 
