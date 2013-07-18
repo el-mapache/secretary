@@ -50,6 +50,22 @@
     return typeof fn === "function" ? fn : false;
   };
 
+  function addTo(obj, path, val) {
+    var key, lastIdx;
+    lastIdx = path.length - 1;
+
+    for (var i = 0; i < lastIdx;i++) {
+      key = path[i];
+
+      if (!(key in obj))
+        obj[key] = {}
+
+      obj = obj[key];
+    }
+
+    obj[path[lastIdx]] = val;
+  }
+
   root.FileSystem = root.FileSystem || function() {};
 
   root.FileSystem = FileSystem = function(opts) {
@@ -124,7 +140,6 @@
  
   FileSystem.prototype.findOrCreateFile = function(root, filename, cb) {
     var self = this,
-        fs = this.fs.root,
         root = root || this.currentDirectory;
  
     cb = isCallback(cb);
@@ -138,7 +153,7 @@
     function onRetrievalError(err) {
       if (err.code === 9) {
         if (self.debug) console.log('file exists, opening..')
-        fs.getFile(filename, {}, function(entry) {
+        root.getFile(filename, {}, function(entry) {
           self.file = entry;
           return cb && cb(self.file);
         },onError);
@@ -147,7 +162,7 @@
       }
     }
  
-    fs.getFile(filename, {
+    root.getFile(filename, {
       create: true, 
       exclusive: true
     }, onFileRetrieval, onRetrievalError);
@@ -344,45 +359,46 @@
   // Read the entire filesystem recursively in series.
   // TODO explore do this in parallel and then sorting?
   FileSystem.prototype.readDir = function(root, cb) {
-   function walk(root,done) {
-     var results = [];
-     var temp = [];
-     var reader = root.createReader();
-     var name = root.fullPath === "/" ? "" : root.fullPath;
+    function walk(root,done) {
+      var results = {},
+          temp = [],
+          reader = root.createReader(),
+          name = root.fullPath === "/" ? "" : root.fullPath;
+     
 
-     function read() {
-       reader.readEntries(function(list) {
-         if (!list.length) {
-           var i = 0;
-           temp.sort(); 
-           (function next() {
-             var file = temp[i++];
+      function read() {
+        reader.readEntries(function(list) {
+          if (!list.length) {
+            var i = 0;
+            temp.sort(); 
 
-             if (!file) return done(results);
+            (function next() {
+              var file = temp[i++];
+              if (!file) return done(temp,results);
 
-             // Add file to the filesystem array
-             results.push(file);//name + '/' + file.name);
-             if(file.isDirectory) {
-               walk(file, function(res) {
-                 results = results.concat(toArray(res));
-                 next();
-               });
-             } else {
-               next();
-             }
-           })();
-         } else {
-           // We don't know if all entries have been returned so put 
-           // the current results into a temporary array and relist the files.
-           temp = temp.concat(toArray(list));
-           read();
-         }
-       }, onError);
-     }
-     read();
-   }
+              addTo(results,file.fullPath.split("/"), file.isFile ? null : {});
+
+              if(file.isDirectory) {
+                walk(file, function(res,results) {
+                  temp = temp.concat(toArray(res));
+                  next();
+                });
+              } else {
+                next();
+              }
+            })();
+          } else {
+            // We don't know if all entries have been returned so put 
+            // the current results into a temporary array and relist the files.
+            temp = temp.concat(toArray(list));
+            read();
+          }
+        }, onError);
+      }
+      read();
+    }
  
-   walk(root,cb); 
+    walk(root,cb); 
   };
 
   // needs work 
