@@ -64,21 +64,15 @@
         function editFile(e) {
           alert("why hello there");
         }
+
         function cd(e) {
           fs.changeDir(fs.fs.root, e.currentTarget.innerHTML, function(dir) {
             document.getElementById('current-dir').innerHTML = fs.currentDirectory.fullPath
           });
-        } 
+        }
+
         fs.readDir(fs.currentDirectory, function(results,o) {
-          window.a = o;
-          for(var i = 0;i<results.length;i++) {
-            if (results[i].isDirectory) {
-              var d = document.createElement('p');
-              d.innerHTML = results[i].fullPath;
-              d.addEventListener("click",cd);
-              document.getElementById("filesystem").appendChild(d);
-            }
-          }
+          fs.listEntries(document.getElementById("filesystem"), o['']);
         });
       }
     </script>

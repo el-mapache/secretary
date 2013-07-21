@@ -401,32 +401,36 @@
     walk(root,cb); 
   };
 
-  // needs work 
-  FileSystem.prototype._listEntries = function(list) {
-    var files = document.querySelector("#filelist"),
-        level = 0,
-        self = this;
-    
-    list.forEach(function(file) {
-      var li = document.createElement("li"),
-          type = !file.isFile ? "<span class='badge'>Folder </span>" : "<span class='badge'>File </span>";
- 
-      li.innerHTML = [type, "<span>", file.name, "</span"].join("");
-      if(!file.isFile) {
-        li.style.marginLeft = (5 * level) + "px";
-        ++level;
- 
-        var parentDir = self.fullPath.replace(root.name,"");
-        self.fileTree['/']
-        self.readDir(file);
+  FileSystem.prototype.listEntries = function(list,entries,cb) {
+    function loop(obj,l) {
+      // If the folder object has no children, 
+      // remove the empty ul form the DOM.
+      if (Object.keys(obj).length === 0) l.remove()
+
+      for (var entry in obj) {
+
+        if (obj[entry]) {
+          var ul = document.createElement("ul"),
+              li = document.createElement("li");
+
+          li.innerHTML = entry;
+          l.appendChild(li);
+          l.insertBefore(ul, li.nextSibling);
+
+          loop(obj[entry],ul);
+
+        } else {
+          var li = document.createElement("li");
+          li.innerHTML = entry;
+          l.appendChild(li);
+        }
       }
-      
-      li.onclick = function() {
-        self.findOrCreateFile("test.tmp");
-     };
-     files.appendChild(li);
-   }); 
- };
+    }
+
+    var ul = document.createElement("ul");
+    loop(entries,list)
+    list.appendChild(ul);
+  };
  
   return FileSystem;
 })(window);
