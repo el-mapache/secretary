@@ -1,4 +1,4 @@
 Secretary
 =========
 
-FilseSystem API wrapper
+Chrome FilseSystem API wrapper.
